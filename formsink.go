@@ -41,6 +41,8 @@ func (fs *FormSink) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeStatus(w, http.StatusNotFound)
 		return
 	}
+
+	writeStatus(w, http.StatusSeeOther)
 }
 
 func writeStatus(w http.ResponseWriter, status int) {

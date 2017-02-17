@@ -14,6 +14,21 @@ var simpleForm = &Form{
 	Files:  []string{"picture"},
 }
 
+// The "happy" best-case-scenario path.
+func TestHappy(t *testing.T) {
+	sink := &FormSink{}
+	err := sink.AddForm(simpleForm)
+	assert.Nil(t, err)
+
+	r := httptest.NewRequest(http.MethodPost, "/contact", nil)
+	w := httptest.NewRecorder()
+	sink.ServeHTTP(w, r)
+
+	result := w.Result()
+	assert.Equal(t, http.StatusSeeOther, result.StatusCode)
+	// TODO: configured redirect in "Location"
+}
+
 func TestAddFormError(t *testing.T) {
 	forms := []*Form{
 		nil,
@@ -37,9 +52,4 @@ func TestNotPost(t *testing.T) {
 
 	result := w.Result()
 	assert.Equal(t, http.StatusMethodNotAllowed, result.StatusCode)
-}
-
-func TestSimpleFormSink(t *testing.T) {
-	sink := &FormSink{}
-	sink.AddForm(simpleForm)
 }
