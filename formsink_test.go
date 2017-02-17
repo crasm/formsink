@@ -30,7 +30,7 @@ func TestNotPost(t *testing.T) {
 	sink := &FormSink{}
 	sink.AddForm(simpleForm)
 
-	r := httptest.NewRequest("GET", "/contact", nil)
+	r := httptest.NewRequest(http.MethodGet, "/contact", nil)
 	w := httptest.NewRecorder()
 	sink.ServeHTTP(w, r)
 

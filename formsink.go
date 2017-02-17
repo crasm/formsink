@@ -31,11 +31,21 @@ func (fs *FormSink) AddForm(form *Form) error {
 }
 
 func (fs *FormSink) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		w.Write([]byte("405"))
+	if r.Method != http.MethodPost {
+		writeStatus(w, http.StatusMethodNotAllowed)
 		return
 	}
+
+	_, ok := fs.forms[r.URL.Path[1:]] // Path starts with '/'
+	if !ok {
+		writeStatus(w, http.StatusNotFound)
+		return
+	}
+}
+
+func writeStatus(w http.ResponseWriter, status int) {
+	w.WriteHeader(status)
+	fmt.Fprintf(w, "%d", status)
 }
 
 func e(format string, a ...interface{}) error {
