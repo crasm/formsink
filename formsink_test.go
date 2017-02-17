@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var simpleForm = &Form{
@@ -20,9 +22,8 @@ func TestAddFormError(t *testing.T) {
 
 	for _, f := range forms {
 		sink := &FormSink{}
-		if err := sink.AddForm(f); err == nil {
-			t.Error("Expected an error")
-		}
+		err := sink.AddForm(f)
+		assert.NotNil(t, err)
 	}
 }
 
@@ -35,10 +36,7 @@ func TestNotPost(t *testing.T) {
 	sink.ServeHTTP(w, r)
 
 	result := w.Result()
-	if result.StatusCode != http.StatusMethodNotAllowed {
-		t.Errorf("Got %v, expected %v",
-			result.StatusCode, http.StatusMethodNotAllowed)
-	}
+	assert.Equal(t, http.StatusMethodNotAllowed, result.StatusCode)
 }
 
 func TestSimpleFormSink(t *testing.T) {
