@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const location = "https://ddg.gg"
+
 var simpleForm = &Form{
 	Name:   "contact",
 	Fields: []string{"name", "email", "message"},
@@ -16,8 +18,7 @@ var simpleForm = &Form{
 
 // The "happy" best-case-scenario path.
 func TestHappy(t *testing.T) {
-	sink := &FormSink{}
-	err := sink.AddForm(simpleForm)
+	sink, err := New(location, simpleForm)
 	assert.Nil(t, err)
 
 	r := httptest.NewRequest(http.MethodPost, "/contact", nil)
@@ -26,7 +27,7 @@ func TestHappy(t *testing.T) {
 
 	result := w.Result()
 	assert.Equal(t, http.StatusSeeOther, result.StatusCode)
-	// TODO: configured redirect in "Location"
+	assert.Equal(t, location, result.Header.Get("Location"))
 }
 
 func TestAddFormError(t *testing.T) {
@@ -36,15 +37,14 @@ func TestAddFormError(t *testing.T) {
 	}
 
 	for _, f := range forms {
-		sink := &FormSink{}
-		err := sink.AddForm(f)
+		_, err := New(location, f)
 		assert.NotNil(t, err)
 	}
 }
 
 func TestNotPost(t *testing.T) {
-	sink := &FormSink{}
-	sink.AddForm(simpleForm)
+	sink, err := New(location, simpleForm)
+	assert.Nil(t, err)
 
 	r := httptest.NewRequest(http.MethodGet, "/contact", nil)
 	w := httptest.NewRecorder()

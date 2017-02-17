@@ -5,8 +5,9 @@ import (
 	"net/http"
 )
 
-type FormSink struct {
-	forms map[string]*Form
+type formSink struct {
+	redirect string
+	forms    map[string]*Form
 }
 
 type Form struct {
@@ -15,22 +16,27 @@ type Form struct {
 	Files  []string
 }
 
-func (fs *FormSink) AddForm(form *Form) error {
-	if form == nil {
-		return e("form must not be nil")
-	} else if form.Name == "" {
-		return e("Form.Name must not be \"\"")
+func New(redirect string, forms ...*Form) (http.Handler, error) {
+	if len(forms) < 1 {
+		return nil, e("must have at least one form")
+	} else if redirect == "" {
+		return nil, e("must provide a redirect URL")
 	}
 
-	if fs.forms == nil {
-		fs.forms = make(map[string]*Form)
+	formMap := make(map[string]*Form)
+	for _, f := range forms {
+		if f == nil {
+			return nil, e("forms cannot be nil")
+		} else if f.Name == "" {
+			return nil, e("Form.Name must not be \"\"")
+		}
+		formMap[f.Name] = f
 	}
 
-	fs.forms[form.Name] = form
-	return nil
+	return &formSink{redirect, formMap}, nil
 }
 
-func (fs *FormSink) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (fs *formSink) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeStatus(w, http.StatusMethodNotAllowed)
 		return
@@ -42,6 +48,7 @@ func (fs *FormSink) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Location", fs.redirect)
 	writeStatus(w, http.StatusSeeOther)
 }
 
