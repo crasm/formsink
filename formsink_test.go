@@ -30,6 +30,18 @@ func TestHappy(t *testing.T) {
 	assert.Equal(t, location, result.Header.Get("Location"))
 }
 
+func TestNotFound(t *testing.T) {
+	sink, err := New(location, simpleForm)
+	assert.Nil(t, err)
+
+	r := httptest.NewRequest(http.MethodPost, "/hello", nil)
+	w := httptest.NewRecorder()
+	sink.ServeHTTP(w, r)
+
+	result := w.Result()
+	assert.Equal(t, http.StatusNotFound, result.StatusCode)
+}
+
 func TestAddFormError(t *testing.T) {
 	forms := []*Form{
 		nil,
