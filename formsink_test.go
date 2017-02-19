@@ -2,11 +2,14 @@ package formsink
 
 import (
 	"bufio"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/mail"
 	"os"
 	"testing"
 
+	gm "github.com/jpoehls/gophermail"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,9 +21,59 @@ var simpleForm = &Form{
 	Files:  []string{"picture"},
 }
 
+var simpleMessage *gm.Message
+
+func init() {
+	msg := &gm.Message{}
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic("can't initialize: " + err.Error())
+	}
+
+	msg.From = mail.Address{
+		Name:    "FormSink",
+		Address: "FormSink@" + hostname,
+	}
+
+	msg.To = []mail.Address{mail.Address{
+		Address: simpleForm.Name + "@" + hostname,
+	}}
+
+	msg.Subject = simpleForm.Name + " request"
+
+	tiny, err := os.Open("resources/tiny.ppm")
+	if err != nil {
+		panic("can't initialize: " + err.Error())
+	}
+
+	picture := gm.Attachment{
+		Name:        "tiny.ppm",
+		ContentType: "image/x-portable-pixmap",
+		Data:        tiny,
+	}
+
+	msg.Attachments = []gm.Attachment{picture}
+
+	msg.Body = "name: crasm\nemail: crasm@formsink.email.vczf.io\nmessage: I &#9829; formsink!\n"
+
+	simpleMessage = msg
+}
+
+type mockDepositor struct {
+	msg *gm.Message
+}
+
+func (m *mockDepositor) Deposit(msg *gm.Message) error {
+	m.msg = msg
+	return nil
+}
+
 // The "happy" best-case-scenario path.
 func TestHappy(t *testing.T) {
-	sink, err := NewSink(location, simpleForm)
+	mockDepositor := &mockDepositor{}
+
+	sink, err := newSink(mockDepositor, location, simpleForm)
 	assert.Nil(t, err)
 
 	firefoxPost, err := os.Open("resources/post")
@@ -34,6 +87,23 @@ func TestHappy(t *testing.T) {
 	result := w.Result()
 	assert.Equal(t, http.StatusSeeOther, result.StatusCode)
 	assert.Equal(t, location, result.Header.Get("Location"))
+
+	assert.Equal(t, simpleMessage.From, mockDepositor.msg.From)
+	assert.Equal(t, simpleMessage.To, mockDepositor.msg.To)
+	assert.Equal(t, simpleMessage.Subject, mockDepositor.msg.Subject)
+	assert.Equal(t, len(simpleMessage.Attachments), len(mockDepositor.msg.Attachments))
+	for i := range mockDepositor.msg.Attachments {
+		simpleAttachment := simpleMessage.Attachments[i]
+		mockAttachment := mockDepositor.msg.Attachments[i]
+
+		assert.Equal(t, simpleAttachment.Name, mockAttachment.Name)
+		simpleData, err := ioutil.ReadAll(simpleAttachment.Data)
+		assert.Nil(t, err)
+		mockData, err := ioutil.ReadAll(mockAttachment.Data)
+		assert.Nil(t, err)
+
+		assert.Equal(t, simpleData, mockData)
+	}
 }
 
 func TestNotFound(t *testing.T) {

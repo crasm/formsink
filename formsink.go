@@ -177,8 +177,6 @@ func (fs *formSink) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Location", fs.redirect)
 	writeStatus(w, http.StatusSeeOther)
-
-	// TODO: Add test form for happy path of execution
 }
 
 func writeStatus(w http.ResponseWriter, status int) {
