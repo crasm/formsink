@@ -1,8 +1,10 @@
 package formsink
 
 import (
+	"bufio"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,10 +20,14 @@ var simpleForm = &Form{
 
 // The "happy" best-case-scenario path.
 func TestHappy(t *testing.T) {
-	sink, err := New(location, simpleForm)
+	sink, err := NewSink(location, simpleForm)
 	assert.Nil(t, err)
 
-	r := httptest.NewRequest(http.MethodPost, "/contact", nil)
+	firefoxPost, err := os.Open("resources/post")
+	assert.Nil(t, err)
+	r, err := http.ReadRequest(bufio.NewReader(firefoxPost))
+	assert.Nil(t, err)
+
 	w := httptest.NewRecorder()
 	sink.ServeHTTP(w, r)
 
@@ -31,7 +37,7 @@ func TestHappy(t *testing.T) {
 }
 
 func TestNotFound(t *testing.T) {
-	sink, err := New(location, simpleForm)
+	sink, err := NewSink(location, simpleForm)
 	assert.Nil(t, err)
 
 	r := httptest.NewRequest(http.MethodPost, "/hello", nil)
@@ -49,13 +55,13 @@ func TestAddFormError(t *testing.T) {
 	}
 
 	for _, f := range forms {
-		_, err := New(location, f)
+		_, err := NewSink(location, f)
 		assert.NotNil(t, err)
 	}
 }
 
 func TestNotPost(t *testing.T) {
-	sink, err := New(location, simpleForm)
+	sink, err := NewSink(location, simpleForm)
 	assert.Nil(t, err)
 
 	r := httptest.NewRequest(http.MethodGet, "/contact", nil)
