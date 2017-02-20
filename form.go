@@ -28,13 +28,19 @@ func documentsToForms(documents ...*goquery.Document) ([]*Form, error) {
 				return false
 			}
 
-			url, err := url.Parse(action)
+			var u *url.URL
+			u, err = url.Parse(action)
 			if err != nil {
 				return false
 			}
 
+			if len(u.Path) < 2 || u.Path[0] != '/' {
+				err = e("'action' URL is not in the form '/foo'")
+				return false
+			}
+
 			f := &Form{
-				Name:   url.Path[1:], // e.g. string("/contact")[1:] => "contact"
+				Name:   u.Path[1:], // e.g. string("/contact")[1:] => "contact"
 				Fields: []string{},
 				Files:  []string{},
 			}
