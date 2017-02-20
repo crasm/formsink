@@ -11,6 +11,7 @@ import (
 
 	gm "github.com/jpoehls/gophermail"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const location = "https://ddg.gg"
@@ -88,9 +89,12 @@ func TestHappy(t *testing.T) {
 	assert.Equal(t, http.StatusSeeOther, result.StatusCode)
 	assert.Equal(t, location, result.Header.Get("Location"))
 
+	require.NotNil(t, mockDepositor.msg, "No mail message was provided")
 	assert.Equal(t, simpleMessage.From, mockDepositor.msg.From)
 	assert.Equal(t, simpleMessage.To, mockDepositor.msg.To)
 	assert.Equal(t, simpleMessage.Subject, mockDepositor.msg.Subject)
+	assert.Equal(t, simpleMessage.Body, mockDepositor.msg.Body)
+
 	assert.Equal(t, len(simpleMessage.Attachments), len(mockDepositor.msg.Attachments))
 	for i := range mockDepositor.msg.Attachments {
 		simpleAttachment := simpleMessage.Attachments[i]

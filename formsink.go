@@ -3,13 +3,13 @@ package formsink
 import (
 	"bytes"
 	"fmt"
+	"mime/multipart"
 	"net/http"
 	"net/mail"
 	"os"
 
 	log "github.com/Sirupsen/logrus"
 	gm "github.com/jpoehls/gophermail"
-	md "github.com/luksen/maildir"
 )
 
 // This is the same default as in net/http/request.go
@@ -35,43 +35,16 @@ func init() {
 	}
 }
 
-type formSink struct {
-	depositor depositor
-	redirect  string
-	forms     map[string]*Form
-}
-
 type Form struct {
 	Name   string
 	Fields []string
 	Files  []string
 }
 
-type depositor interface {
-	Deposit(*gm.Message) error
-}
-
-type maildir struct {
-	dir string
-}
-
-func (m *maildir) Deposit(msg *gm.Message) error {
-	dir := md.Dir(m.dir)
-	dir.Create() // TODO err?
-
-	delivery, err := dir.NewDelivery()
-	if err != nil {
-		return err
-	}
-	defer delivery.Close()
-
-	msgBytes, err := msg.Bytes()
-	if err != nil {
-		return err
-	}
-
-	_, err = delivery.Write(msgBytes)
-	return err
+type formSink struct {
+	depositor depositor
+	redirect  string
+	forms     map[string]*Form
 }
 
 func NewSink(redirect string, forms ...*Form) (http.Handler, error) {
@@ -98,7 +71,6 @@ func newSink(depositor depositor, redirect string, forms ...*Form) (http.Handler
 	return &formSink{depositor, redirect, formMap}, nil
 }
 
-// TODO: this method is doing way too much. It should be higher level.
 func (fs *formSink) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeStatus(w, http.StatusMethodNotAllowed)
@@ -111,65 +83,18 @@ func (fs *formSink) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Begin building the message.
-	msg := &gm.Message{
-		From: formSinkAddress,
-		To: []mail.Address{mail.Address{
-			// e.g. contact@example.com
-			Address: form.Name + "@" + hostname,
-		}},
-		Subject:     form.Name + " request",
-		Attachments: make([]gm.Attachment, 0, 0),
+	if err := r.ParseMultipartForm(defaultMaxMemory); err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("Error parsing multipart form")
+		return
 	}
 
-	// Build message body
-	body := &bytes.Buffer{}
-
-	for _, id := range form.Fields {
-		// TODO: try to decouple this because needing the directly
-		// executed anonymous function is probably a code smell.
-		func() {
-			body.WriteString(id)
-			body.WriteString(": ")
-			defer body.WriteString("\n")
-
-			v := r.FormValue(id)
-			if v == "" {
-				log.WithFields(log.Fields{
-					"id": id,
-				}).Warn("No value for id")
-				return
-			}
-
-			body.WriteString(v)
-		}()
-	}
-
-	msg.Body = body.String()
-
-	// Add files as attachments
-	for _, id := range form.Files {
-		func() {
-			file, meta, err := r.FormFile(id)
-			if err != nil {
-				log.WithFields(log.Fields{
-					"id":    id,
-					"error": err.Error(),
-				}).Warn("Error parsing file")
-				return
-			}
-
-			msg.Attachments = append(msg.Attachments,
-				gm.Attachment{
-					Name: meta.Filename,
-					Data: file,
-				})
-		}()
-	}
+	msg := buildMessage(form, r.MultipartForm)
 
 	if err := fs.depositor.Deposit(msg); err != nil {
 		log.WithFields(log.Fields{
-			"err": err,
+			"error": err.Error(),
 		}).Error("Error while building and saving the message")
 		writeStatus(w, http.StatusInternalServerError)
 		return
@@ -177,6 +102,82 @@ func (fs *formSink) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Location", fs.redirect)
 	writeStatus(w, http.StatusSeeOther)
+}
+
+func buildMessage(formSpec *Form, multipartForm *multipart.Form) *gm.Message {
+	// Begin building the message.
+	msg := &gm.Message{
+		From: formSinkAddress,
+		To: []mail.Address{mail.Address{
+			// e.g. contact@example.com
+			Address: formSpec.Name + "@" + hostname,
+		}},
+		Subject:     formSpec.Name + " request",
+		Attachments: make([]gm.Attachment, 0, 0),
+	}
+
+	// Build message body
+	body := &bytes.Buffer{}
+
+	for _, id := range formSpec.Fields {
+		body.WriteString(id)
+		body.WriteString(": ")
+
+		values, ok := multipartForm.Value[id]
+		if !ok || len(values) < 1 {
+			log.WithFields(log.Fields{
+				"id": id,
+			}).Warn("No value for id")
+			continue
+		}
+
+		if len(values) > 1 {
+			log.WithFields(log.Fields{
+				"id": id,
+			}).Warn("Multiple values for a single field, ignoring all but the first")
+		}
+
+		body.WriteString(values[0])
+		body.WriteString("\n")
+	}
+
+	msg.Body = body.String()
+
+	// Add files as attachments
+	for _, id := range formSpec.Files {
+		metas, ok := multipartForm.File[id]
+		if !ok || len(metas) < 1 {
+			log.WithFields(log.Fields{
+				"id": id,
+			}).Warn("No file for id")
+			continue
+		}
+
+		if len(metas) > 1 {
+			log.WithFields(log.Fields{
+				"id": id,
+			}).Warn("Multiple files for a single field, ignoring all but the first")
+		}
+
+		meta := metas[0]
+
+		file, err := meta.Open()
+		if err != nil {
+			log.WithFields(log.Fields{
+				"id":    id,
+				"error": err.Error(),
+			}).Warn("Error opening file")
+			continue
+		}
+
+		msg.Attachments = append(msg.Attachments,
+			gm.Attachment{
+				Name: meta.Filename,
+				Data: file,
+			})
+	}
+
+	return msg
 }
 
 func writeStatus(w http.ResponseWriter, status int) {
