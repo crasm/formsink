@@ -6,6 +6,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/mail"
+	"net/url"
 	"os"
 
 	"github.com/PuerkitoBio/goquery"
@@ -77,14 +78,41 @@ func NewSinkFromDocument(redirect string, documents ...*goquery.Document) (http.
 }
 
 func newSinkFromDocument(depositor depositor, redirect string, documents ...*goquery.Document) (http.Handler, error) {
+
 	forms := make([]*Form, 0)
 	for _, doc := range documents {
-		doc.Find("form").Each(func(i int, f *goquery.Selection) {
-			// TODO NEXT: write tests, then come back here and figure
-			// out exactly what needs to happen in order to find the
-			// forms
+		var err error
+
+		doc.Find("form").EachWithBreak(func(_ int, sel *goquery.Selection) bool {
+
+			// e.g. action='https://www.example.com/contact'
+			action, ok := sel.Attr("action")
+			if !ok {
+				err = e("No 'action' attribute available for %v", sel)
+				return false
+			}
+
+			url, err := url.Parse(action)
+			if err != nil {
+				return false
+			}
+
+			f := &Form{
+				Name:   url.Path[1:], // e.g. string("/contact")[1:] => "contact"
+				Fields: []string{},
+				Files:  []string{},
+			}
+			forms = append(forms, f)
+
+			return true
 		})
+
+		if err != nil {
+			return nil, err
+		}
 	}
+
+	fmt.Println(forms[0])
 
 	return newSink(depositor, redirect, forms...)
 }

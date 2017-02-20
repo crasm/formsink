@@ -90,7 +90,8 @@ func checkContactForm(t *testing.T, mockDepositor *mockDepositor, sink http.Hand
 	assert.Equal(t, simpleMessage.Subject, mockDepositor.msg.Subject)
 	assert.Equal(t, simpleMessage.Body, mockDepositor.msg.Body)
 
-	assert.Equal(t, len(simpleMessage.Attachments), len(mockDepositor.msg.Attachments))
+	assert.Equal(t, len(simpleMessage.Attachments), len(mockDepositor.msg.Attachments),
+		"Does have the correct number of attachments")
 	for i := range mockDepositor.msg.Attachments {
 		simpleAttachment := simpleMessage.Attachments[i]
 		mockAttachment := mockDepositor.msg.Attachments[i]
