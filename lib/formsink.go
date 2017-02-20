@@ -1,8 +1,9 @@
-package formsink
+package lib
 
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/mail"
@@ -44,6 +45,18 @@ type formSink struct {
 
 func NewSink(redirect string, forms ...*Form) (http.Handler, error) {
 	return newSink(&maildir{"./Maildir/"}, redirect, forms...)
+}
+
+func NewSinkFromReader(redirect string, readers ...io.Reader) (http.Handler, error) {
+	documents := make([]*goquery.Document, 0)
+	for _, r := range readers {
+		d, err := goquery.NewDocumentFromReader(r)
+		if err != nil {
+			return nil, err
+		}
+		documents = append(documents, d)
+	}
+	return newSinkFromDocument(&maildir{"./Maildir/"}, redirect, documents...)
 }
 
 func newSink(depositor depositor, redirect string, forms ...*Form) (http.Handler, error) {

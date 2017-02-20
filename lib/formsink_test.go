@@ -1,4 +1,4 @@
-package formsink
+package lib
 
 import (
 	"bufio"
@@ -43,7 +43,7 @@ func init() {
 
 	msg.Subject = simpleForm.Name + " request"
 
-	tiny, err := os.Open("resources/tiny.ppm")
+	tiny, err := os.Open("../resources/tiny.ppm")
 	if err != nil {
 		panic("can't initialize: " + err.Error())
 	}
@@ -71,7 +71,7 @@ func (m *mockDepositor) Deposit(msg *gm.Message) error {
 }
 
 func checkContactForm(t *testing.T, mockDepositor *mockDepositor, sink http.Handler) {
-	firefoxPost, err := os.Open("resources/post")
+	firefoxPost, err := os.Open("../resources/post")
 	require.Nil(t, err)
 	r, err := http.ReadRequest(bufio.NewReader(firefoxPost))
 	require.Nil(t, err)

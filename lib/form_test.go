@@ -1,4 +1,4 @@
-package formsink
+package lib
 
 import (
 	"os"
@@ -10,7 +10,7 @@ import (
 )
 
 func TestDocumentsToFormsContact(t *testing.T) {
-	html, err := os.Open("resources/contact.html")
+	html, err := os.Open("../resources/contact.html")
 	require.Nil(t, err)
 	defer html.Close()
 
@@ -25,7 +25,7 @@ func TestDocumentsToFormsContact(t *testing.T) {
 }
 
 func TestDocumentsToFormsNoAction(t *testing.T) {
-	html, err := os.Open("resources/contact.html")
+	html, err := os.Open("../resources/contact.html")
 	require.Nil(t, err)
 	defer html.Close()
 

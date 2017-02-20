@@ -1,4 +1,4 @@
-package formsink
+package lib
 
 import gm "github.com/jpoehls/gophermail"
 import md "github.com/luksen/maildir"

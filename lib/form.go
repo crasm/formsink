@@ -1,4 +1,4 @@
-package formsink
+package lib
 
 import (
 	"net/url"
