@@ -71,8 +71,6 @@ func newSinkFromDocument(depositor depositor, redirect string, documents ...*goq
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Println(forms[0])
 	return newSink(depositor, redirect, forms...)
 }
 
