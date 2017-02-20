@@ -13,7 +13,10 @@ type maildir struct {
 
 func (m *maildir) Deposit(msg *gm.Message) error {
 	dir := md.Dir(m.dir)
-	dir.Create() // TODO err?
+	err := dir.Create()
+	if err != nil {
+		return nil
+	}
 
 	delivery, err := dir.NewDelivery()
 	if err != nil {

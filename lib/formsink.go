@@ -74,6 +74,9 @@ func newSink(depositor depositor, redirect string, forms ...*Form) (http.Handler
 			return nil, e("Form.Name must not be \"\"")
 		}
 		formMap[f.Name] = f
+		log.WithFields(log.Fields{
+			"form": f,
+		}).Info("Added form")
 	}
 
 	return &formSink{depositor, redirect, formMap}, nil
@@ -118,6 +121,8 @@ func (fs *formSink) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Location", fs.redirect)
 	writeStatus(w, http.StatusSeeOther)
+
+	log.Info("Finished processing form")
 }
 
 func buildMessage(formSpec *Form, multipartForm *multipart.Form) *gm.Message {
