@@ -9,7 +9,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/PuerkitoBio/goquery"
 	gm "github.com/jpoehls/gophermail"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -150,18 +149,4 @@ func TestNotPost(t *testing.T) {
 
 	result := w.Result()
 	assert.Equal(t, http.StatusMethodNotAllowed, result.StatusCode)
-}
-
-func TestDocument(t *testing.T) {
-	mockDepositor := &mockDepositor{}
-
-	html, err := os.Open("resources/contact.html")
-	require.Nil(t, err)
-	doc, err := goquery.NewDocumentFromReader(html)
-	require.Nil(t, err)
-
-	sink, err := newSinkFromDocument(mockDepositor, location, doc)
-	require.Nil(t, err)
-
-	checkContactForm(t, mockDepositor, sink)
 }
