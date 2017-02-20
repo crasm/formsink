@@ -17,7 +17,9 @@ func documentsToForms(documents ...*goquery.Document) ([]*Form, error) {
 	for _, doc := range documents {
 		var err error
 
-		doc.Find("form").EachWithBreak(func(_ int, sel *goquery.Selection) bool {
+		doc.Find(
+			"form",
+		).EachWithBreak(func(_ int, sel *goquery.Selection) bool {
 
 			// e.g. action='https://www.example.com/contact'
 			action, ok := sel.Attr("action")
@@ -36,8 +38,25 @@ func documentsToForms(documents ...*goquery.Document) ([]*Form, error) {
 				Fields: []string{},
 				Files:  []string{},
 			}
-			forms = append(forms, f)
 
+			// All of these are submittable according to
+			//     https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/Content_categories#Form_submittable
+			sel.Find(
+				"button, input, keygen, object, select, textarea",
+			).Each(func(_ int, submittable *goquery.Selection) {
+				name, ok := submittable.Attr("name")
+				if !ok { // skip elements without names
+					return
+				}
+
+				if submittable.Is("input[type='file']") {
+					f.Files = append(f.Files, name)
+				} else {
+					f.Fields = append(f.Fields, name)
+				}
+			})
+
+			forms = append(forms, f)
 			return true
 		})
 
