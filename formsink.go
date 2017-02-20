@@ -8,6 +8,7 @@ import (
 	"net/mail"
 	"os"
 
+	"github.com/PuerkitoBio/goquery"
 	log "github.com/Sirupsen/logrus"
 	gm "github.com/jpoehls/gophermail"
 )
@@ -69,6 +70,23 @@ func newSink(depositor depositor, redirect string, forms ...*Form) (http.Handler
 	}
 
 	return &formSink{depositor, redirect, formMap}, nil
+}
+
+func NewSinkFromDocument(redirect string, documents ...*goquery.Document) (http.Handler, error) {
+	return newSinkFromDocument(&maildir{"./Maildir/"}, redirect, documents...)
+}
+
+func newSinkFromDocument(depositor depositor, redirect string, documents ...*goquery.Document) (http.Handler, error) {
+	forms := make([]*Form, 0)
+	for _, doc := range documents {
+		doc.Find("form").Each(func(i int, f *goquery.Selection) {
+			// TODO NEXT: write tests, then come back here and figure
+			// out exactly what needs to happen in order to find the
+			// forms
+		})
+	}
+
+	return newSink(depositor, redirect, forms...)
 }
 
 func (fs *formSink) ServeHTTP(w http.ResponseWriter, r *http.Request) {

@@ -9,6 +9,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/PuerkitoBio/goquery"
 	gm "github.com/jpoehls/gophermail"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -70,17 +71,11 @@ func (m *mockDepositor) Deposit(msg *gm.Message) error {
 	return nil
 }
 
-// The "happy" best-case-scenario path.
-func TestHappy(t *testing.T) {
-	mockDepositor := &mockDepositor{}
-
-	sink, err := newSink(mockDepositor, location, simpleForm)
-	assert.Nil(t, err)
-
+func checkContactForm(t *testing.T, mockDepositor *mockDepositor, sink http.Handler) {
 	firefoxPost, err := os.Open("resources/post")
-	assert.Nil(t, err)
+	require.Nil(t, err)
 	r, err := http.ReadRequest(bufio.NewReader(firefoxPost))
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	w := httptest.NewRecorder()
 	sink.ServeHTTP(w, r)
@@ -108,6 +103,16 @@ func TestHappy(t *testing.T) {
 
 		assert.Equal(t, simpleData, mockData)
 	}
+}
+
+// The "happy" best-case-scenario path.
+func TestHappy(t *testing.T) {
+	mockDepositor := &mockDepositor{}
+
+	sink, err := newSink(mockDepositor, location, simpleForm)
+	require.Nil(t, err)
+
+	checkContactForm(t, mockDepositor, sink)
 }
 
 func TestNotFound(t *testing.T) {
@@ -144,4 +149,18 @@ func TestNotPost(t *testing.T) {
 
 	result := w.Result()
 	assert.Equal(t, http.StatusMethodNotAllowed, result.StatusCode)
+}
+
+func TestDocument(t *testing.T) {
+	mockDepositor := &mockDepositor{}
+
+	html, err := os.Open("resources/contact.html")
+	require.Nil(t, err)
+	doc, err := goquery.NewDocumentFromReader(html)
+	require.Nil(t, err)
+
+	sink, err := newSinkFromDocument(mockDepositor, location, doc)
+	require.Nil(t, err)
+
+	checkContactForm(t, mockDepositor, sink)
 }
