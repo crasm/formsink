@@ -6,7 +6,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/mail"
-	"net/url"
 	"os"
 
 	"github.com/PuerkitoBio/goquery"
@@ -35,12 +34,6 @@ func init() {
 		Name:    "FormSink",
 		Address: "FormSink@" + hostname,
 	}
-}
-
-type Form struct {
-	Name   string
-	Fields []string
-	Files  []string
 }
 
 type formSink struct {
@@ -73,47 +66,13 @@ func newSink(depositor depositor, redirect string, forms ...*Form) (http.Handler
 	return &formSink{depositor, redirect, formMap}, nil
 }
 
-func NewSinkFromDocument(redirect string, documents ...*goquery.Document) (http.Handler, error) {
-	return newSinkFromDocument(&maildir{"./Maildir/"}, redirect, documents...)
-}
-
 func newSinkFromDocument(depositor depositor, redirect string, documents ...*goquery.Document) (http.Handler, error) {
-
-	forms := make([]*Form, 0)
-	for _, doc := range documents {
-		var err error
-
-		doc.Find("form").EachWithBreak(func(_ int, sel *goquery.Selection) bool {
-
-			// e.g. action='https://www.example.com/contact'
-			action, ok := sel.Attr("action")
-			if !ok {
-				err = e("No 'action' attribute available for %v", sel)
-				return false
-			}
-
-			url, err := url.Parse(action)
-			if err != nil {
-				return false
-			}
-
-			f := &Form{
-				Name:   url.Path[1:], // e.g. string("/contact")[1:] => "contact"
-				Fields: []string{},
-				Files:  []string{},
-			}
-			forms = append(forms, f)
-
-			return true
-		})
-
-		if err != nil {
-			return nil, err
-		}
+	forms, err := documentsToForms(documents...)
+	if err != nil {
+		return nil, err
 	}
 
 	fmt.Println(forms[0])
-
 	return newSink(depositor, redirect, forms...)
 }
 
