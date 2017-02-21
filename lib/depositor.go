@@ -15,7 +15,7 @@ func (m *maildirDepositor) Deposit(msg *gm.Message) error {
 	dir := md.Dir(m.dir)
 	err := dir.Create()
 	if err != nil {
-		return nil
+		return err
 	}
 
 	delivery, err := dir.NewDelivery()
