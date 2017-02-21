@@ -14,6 +14,8 @@ import (
 	gm "github.com/jpoehls/gophermail"
 )
 
+const DefaultMaildirPath = "./Maildir/"
+
 // This is the same default as in net/http/request.go
 const defaultMaxMemory = 32 << 20 // 32MB
 
@@ -43,11 +45,11 @@ type formSink struct {
 	forms     map[string]*Form
 }
 
-func NewSink(redirect string, forms ...*Form) (http.Handler, error) {
-	return newSink(&maildir{"./Maildir/"}, redirect, forms...)
+func NewSink(maildir, redirect string, forms ...*Form) (http.Handler, error) {
+	return newSink(&maildirDepositor{maildir}, redirect, forms...)
 }
 
-func NewSinkFromReader(redirect string, readers ...io.Reader) (http.Handler, error) {
+func NewSinkFromReader(maildir, redirect string, readers ...io.Reader) (http.Handler, error) {
 	documents := make([]*goquery.Document, 0)
 	for _, r := range readers {
 		d, err := goquery.NewDocumentFromReader(r)
@@ -56,14 +58,17 @@ func NewSinkFromReader(redirect string, readers ...io.Reader) (http.Handler, err
 		}
 		documents = append(documents, d)
 	}
-	return newSinkFromDocument(&maildir{"./Maildir/"}, redirect, documents...)
+	return newSinkFromDocument(&maildirDepositor{maildir}, redirect, documents...)
 }
 
 func newSink(depositor depositor, redirect string, forms ...*Form) (http.Handler, error) {
 	if len(forms) < 1 {
 		return nil, e("must have at least one form")
-	} else if redirect == "" {
-		return nil, e("must provide a redirect URL")
+	}
+	if redirect == "" {
+		log.Warn("'--redirect' is not set")
+	} else {
+		log.WithFields(log.Fields{"address": redirect}).Info("Redirecting to")
 	}
 
 	formMap := make(map[string]*Form)
@@ -119,8 +124,12 @@ func (fs *formSink) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Location", fs.redirect)
-	writeStatus(w, http.StatusSeeOther)
+	if fs.redirect == "" {
+		writeStatus(w, http.StatusNoContent)
+	} else {
+		w.Header().Set("Location", fs.redirect)
+		writeStatus(w, http.StatusSeeOther)
+	}
 
 	log.Info("Finished processing form")
 }

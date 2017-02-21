@@ -22,16 +22,16 @@ var simpleForm = &Form{
 	Files:  []string{"picture"},
 }
 
-var simpleMessage *gm.Message
-
-func init() {
-	msg := &gm.Message{}
-
+// This is a function because the attachments are read by the tests. You
+// can only read in the contents of a file once before needing to rewind
+// or reset.
+func simpleMessage() *gm.Message {
 	hostname, err := os.Hostname()
 	if err != nil {
 		panic("can't initialize: " + err.Error())
 	}
 
+	msg := &gm.Message{}
 	msg.From = mail.Address{
 		Name:    "FormSink",
 		Address: "FormSink@" + hostname,
@@ -55,10 +55,8 @@ func init() {
 	}
 
 	msg.Attachments = []gm.Attachment{picture}
-
 	msg.Body = "name: crasm\nemail: crasm@formsink.email.vczf.io\nmessage: I &#9829; formsink!\n"
-
-	simpleMessage = msg
+	return msg
 }
 
 type mockDepositor struct {
@@ -70,7 +68,9 @@ func (m *mockDepositor) Deposit(msg *gm.Message) error {
 	return nil
 }
 
-func checkContactForm(t *testing.T, mockDepositor *mockDepositor, sink http.Handler) {
+// Replays the captured HTTP POST request against the http.Handler and
+// returns the response.
+func post(t *testing.T, sink http.Handler) *http.Response {
 	firefoxPost, err := os.Open("../resources/post")
 	require.Nil(t, err)
 	r, err := http.ReadRequest(bufio.NewReader(firefoxPost))
@@ -79,21 +79,24 @@ func checkContactForm(t *testing.T, mockDepositor *mockDepositor, sink http.Hand
 	w := httptest.NewRecorder()
 	sink.ServeHTTP(w, r)
 
-	result := w.Result()
-	assert.Equal(t, http.StatusSeeOther, result.StatusCode)
-	assert.Equal(t, location, result.Header.Get("Location"))
+	return w.Result()
+}
 
-	require.NotNil(t, mockDepositor.msg, "No mail message was provided")
-	assert.Equal(t, simpleMessage.From, mockDepositor.msg.From)
-	assert.Equal(t, simpleMessage.To, mockDepositor.msg.To)
-	assert.Equal(t, simpleMessage.Subject, mockDepositor.msg.Subject)
-	assert.Equal(t, simpleMessage.Body, mockDepositor.msg.Body)
+// Checks a message for equality with simpleMessage.
+func checkMessage(t *testing.T, msg *gm.Message) {
+	simpleMessage := simpleMessage()
 
-	assert.Equal(t, len(simpleMessage.Attachments), len(mockDepositor.msg.Attachments),
+	require.NotNil(t, msg, "No mail message was provided")
+	assert.Equal(t, simpleMessage.From, msg.From)
+	assert.Equal(t, simpleMessage.To, msg.To)
+	assert.Equal(t, simpleMessage.Subject, msg.Subject)
+	assert.Equal(t, simpleMessage.Body, msg.Body)
+
+	assert.Equal(t, len(simpleMessage.Attachments), len(msg.Attachments),
 		"Does have the correct number of attachments")
-	for i := range mockDepositor.msg.Attachments {
+	for i := range msg.Attachments {
 		simpleAttachment := simpleMessage.Attachments[i]
-		mockAttachment := mockDepositor.msg.Attachments[i]
+		mockAttachment := msg.Attachments[i]
 
 		assert.Equal(t, simpleAttachment.Name, mockAttachment.Name)
 		simpleData, err := ioutil.ReadAll(simpleAttachment.Data)
@@ -112,11 +115,14 @@ func TestHappy(t *testing.T) {
 	sink, err := newSink(mockDepositor, location, simpleForm)
 	require.Nil(t, err)
 
-	checkContactForm(t, mockDepositor, sink)
+	result := post(t, sink)
+	assert.Equal(t, http.StatusSeeOther, result.StatusCode)
+	assert.Equal(t, location, result.Header.Get("Location"))
+	checkMessage(t, mockDepositor.msg)
 }
 
 func TestNotFound(t *testing.T) {
-	sink, err := NewSink(location, simpleForm)
+	sink, err := NewSink(DefaultMaildirPath, location, simpleForm)
 	assert.Nil(t, err)
 
 	r := httptest.NewRequest(http.MethodPost, "/hello", nil)
@@ -134,13 +140,13 @@ func TestAddFormError(t *testing.T) {
 	}
 
 	for _, f := range forms {
-		_, err := NewSink(location, f)
+		_, err := NewSink(DefaultMaildirPath, location, f)
 		assert.NotNil(t, err)
 	}
 }
 
 func TestNotPost(t *testing.T) {
-	sink, err := NewSink(location, simpleForm)
+	sink, err := NewSink(DefaultMaildirPath, location, simpleForm)
 	assert.Nil(t, err)
 
 	r := httptest.NewRequest(http.MethodGet, "/contact", nil)
@@ -149,4 +155,16 @@ func TestNotPost(t *testing.T) {
 
 	result := w.Result()
 	assert.Equal(t, http.StatusMethodNotAllowed, result.StatusCode)
+}
+
+func TestNoRedirect(t *testing.T) {
+	mockDepositor := &mockDepositor{}
+
+	sink, err := newSink(mockDepositor, location, simpleForm)
+	require.Nil(t, err)
+
+	result := post(t, sink)
+	assert.Equal(t, http.StatusSeeOther, result.StatusCode)
+	assert.Equal(t, location, result.Header.Get("Location"))
+	checkMessage(t, mockDepositor.msg)
 }
