@@ -2,6 +2,7 @@ package main
 
 import (
 	"io"
+	"path/filepath"
 
 	"flag"
 	"net/http"
@@ -17,14 +18,38 @@ var redirect = flag.String("redirect", "", "URL to redirect the user to after su
 
 func main() {
 	flag.Parse()
-	readers := make([]io.Reader, flag.NArg())
-	for i := range flag.Args() {
-		r, err := os.Open(flag.Arg(i))
+
+	filepaths := []string{}
+	for _, arg := range flag.Args() {
+		filepath.Walk(arg, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				log.WithFields(log.Fields{
+					"path": path,
+				}).Error(err)
+				return err
+			}
+
+			if info.IsDir() {
+				return nil // Skip directories because we only care about html files.
+			}
+
+			filepaths = append(filepaths, path)
+			return nil
+		})
+	}
+
+	readers := []io.Reader{}
+	for _, file := range filepaths {
+		r, err := os.Open(file)
 		if err != nil {
-			log.Fatal(err)
+			log.WithFields(log.Fields{
+				"file": file,
+			}).Error(err)
+			continue
 		}
 		defer r.Close()
-		readers[i] = r
+
+		readers = append(readers, r)
 	}
 
 	sink, err := lib.NewSinkFromReader(*maildir, *redirect, readers...)
