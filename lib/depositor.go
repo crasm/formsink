@@ -1,24 +1,34 @@
 package lib
 
-import gm "github.com/jpoehls/gophermail"
-import md "github.com/luksen/maildir"
+import (
+	"github.com/Sirupsen/logrus"
+	gm "github.com/jpoehls/gophermail"
+	md "github.com/luksen/maildir"
+)
 
 type depositor interface {
 	Deposit(*gm.Message) error
 }
 
 type maildirDepositor struct {
-	dir string
+	dir md.Dir
+}
+
+func newMaildirDepositor(dirname string) *maildirDepositor {
+	dir := md.Dir(dirname)
+	err := dir.Create()
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"maildir": dirname,
+			"err":     err.Error(),
+		}).Fatal("Problem initializing maildir")
+	}
+	return &maildirDepositor{dir}
 }
 
 func (m *maildirDepositor) Deposit(msg *gm.Message) error {
-	dir := md.Dir(m.dir)
-	err := dir.Create()
-	if err != nil {
-		return err
-	}
 
-	delivery, err := dir.NewDelivery()
+	delivery, err := m.dir.NewDelivery()
 	if err != nil {
 		return err
 	}

@@ -46,7 +46,7 @@ type formSink struct {
 }
 
 func NewSink(maildir, redirect string, forms ...*Form) (http.Handler, error) {
-	return newSink(&maildirDepositor{maildir}, redirect, forms...)
+	return newSink(newMaildirDepositor(maildir), redirect, forms...)
 }
 
 func NewSinkFromReader(maildir, redirect string, readers ...io.Reader) (http.Handler, error) {
@@ -58,7 +58,7 @@ func NewSinkFromReader(maildir, redirect string, readers ...io.Reader) (http.Han
 		}
 		documents = append(documents, d)
 	}
-	return newSinkFromDocument(&maildirDepositor{maildir}, redirect, documents...)
+	return newSinkFromDocument(newMaildirDepositor(maildir), redirect, documents...)
 }
 
 func newSink(depositor depositor, redirect string, forms ...*Form) (http.Handler, error) {
