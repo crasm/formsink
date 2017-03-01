@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"os"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/crasm/formsink/lib"
 )
 
@@ -23,7 +23,7 @@ func main() {
 	for _, arg := range flag.Args() {
 		filepath.Walk(arg, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
-				log.WithFields(log.Fields{
+				logrus.WithFields(logrus.Fields{
 					"path": path,
 				}).Error(err)
 				return err
@@ -42,7 +42,7 @@ func main() {
 	for _, file := range filepaths {
 		r, err := os.Open(file)
 		if err != nil {
-			log.WithFields(log.Fields{
+			logrus.WithFields(logrus.Fields{
 				"file": file,
 			}).Error(err)
 			continue
@@ -54,11 +54,11 @@ func main() {
 
 	sink, err := lib.NewSinkFromReader(*maildir, *redirect, readers...)
 	if err != nil {
-		log.Fatal(err)
+		logrus.Fatal(err)
 	}
 
-	log.WithFields(log.Fields{
+	logrus.WithFields(logrus.Fields{
 		"address": *listen,
 	}).Info("Listening")
-	log.Fatal(http.ListenAndServe(*listen, sink))
+	logrus.Fatal(http.ListenAndServe(*listen, sink))
 }

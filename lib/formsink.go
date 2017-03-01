@@ -10,7 +10,7 @@ import (
 	"os"
 
 	"github.com/PuerkitoBio/goquery"
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	gm "github.com/jpoehls/gophermail"
 )
 
@@ -26,7 +26,7 @@ func init() {
 	var err error
 	hostname, err = os.Hostname()
 	if err != nil {
-		log.WithFields(log.Fields{
+		logrus.WithFields(logrus.Fields{
 			"err": err,
 		}).Warn("Couldn't read hostname")
 
@@ -66,9 +66,9 @@ func newSink(depositor depositor, redirect string, forms ...*Form) (http.Handler
 		return nil, e("must have at least one form")
 	}
 	if redirect == "" {
-		log.Warn("'--redirect' is not set")
+		logrus.Warn("'--redirect' is not set")
 	} else {
-		log.WithFields(log.Fields{"address": redirect}).Info("Redirecting to")
+		logrus.WithFields(logrus.Fields{"address": redirect}).Info("Redirecting to")
 	}
 
 	formMap := make(map[string]*Form)
@@ -79,7 +79,7 @@ func newSink(depositor depositor, redirect string, forms ...*Form) (http.Handler
 			return nil, e("Form.Name must not be \"\"")
 		}
 		formMap[f.Name] = f
-		log.WithFields(log.Fields{
+		logrus.WithFields(logrus.Fields{
 			"form": f,
 		}).Info("Added form")
 	}
@@ -108,7 +108,7 @@ func (fs *formSink) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := r.ParseMultipartForm(defaultMaxMemory); err != nil {
-		log.WithFields(log.Fields{
+		logrus.WithFields(logrus.Fields{
 			"error": err.Error(),
 		}).Error("Error parsing multipart form")
 		return
@@ -117,7 +117,7 @@ func (fs *formSink) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	msg := buildMessage(form, r.MultipartForm)
 
 	if err := fs.depositor.Deposit(msg); err != nil {
-		log.WithFields(log.Fields{
+		logrus.WithFields(logrus.Fields{
 			"error": err.Error(),
 		}).Error("Error while building and saving the message")
 		writeStatus(w, http.StatusInternalServerError)
@@ -131,7 +131,7 @@ func (fs *formSink) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeStatus(w, http.StatusSeeOther)
 	}
 
-	log.Info("Finished processing form")
+	logrus.Info("Finished processing form")
 }
 
 func buildMessage(formSpec *Form, multipartForm *multipart.Form) *gm.Message {
@@ -155,14 +155,14 @@ func buildMessage(formSpec *Form, multipartForm *multipart.Form) *gm.Message {
 
 		values, ok := multipartForm.Value[id]
 		if !ok || len(values) < 1 {
-			log.WithFields(log.Fields{
+			logrus.WithFields(logrus.Fields{
 				"id": id,
 			}).Warn("No value for id")
 			continue
 		}
 
 		if len(values) > 1 {
-			log.WithFields(log.Fields{
+			logrus.WithFields(logrus.Fields{
 				"id": id,
 			}).Warn("Multiple values for a single field, ignoring all but the first")
 		}
@@ -177,14 +177,14 @@ func buildMessage(formSpec *Form, multipartForm *multipart.Form) *gm.Message {
 	for _, id := range formSpec.Files {
 		metas, ok := multipartForm.File[id]
 		if !ok || len(metas) < 1 {
-			log.WithFields(log.Fields{
+			logrus.WithFields(logrus.Fields{
 				"id": id,
 			}).Warn("No file for id")
 			continue
 		}
 
 		if len(metas) > 1 {
-			log.WithFields(log.Fields{
+			logrus.WithFields(logrus.Fields{
 				"id": id,
 			}).Warn("Multiple files for a single field, ignoring all but the first")
 		}
@@ -193,7 +193,7 @@ func buildMessage(formSpec *Form, multipartForm *multipart.Form) *gm.Message {
 
 		file, err := meta.Open()
 		if err != nil {
-			log.WithFields(log.Fields{
+			logrus.WithFields(logrus.Fields{
 				"id":    id,
 				"error": err.Error(),
 			}).Warn("Error opening file")
