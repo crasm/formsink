@@ -11,7 +11,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/Sirupsen/logrus"
-	gm "github.com/jpoehls/gophermail"
+	"github.com/jpoehls/gophermail"
 )
 
 const DefaultMaildirPath = "./Maildir/"
@@ -134,16 +134,16 @@ func (fs *formSink) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logrus.Info("Finished processing form")
 }
 
-func buildMessage(formSpec *Form, multipartForm *multipart.Form) *gm.Message {
+func buildMessage(formSpec *Form, multipartForm *multipart.Form) *gophermail.Message {
 	// Begin building the message.
-	msg := &gm.Message{
+	msg := &gophermail.Message{
 		From: formSinkAddress,
 		To: []mail.Address{mail.Address{
 			// e.g. contact@example.com
 			Address: formSpec.Name + "@" + hostname,
 		}},
 		Subject:     formSpec.Name + " request",
-		Attachments: make([]gm.Attachment, 0, 0),
+		Attachments: make([]gophermail.Attachment, 0, 0),
 	}
 
 	// Build message body
@@ -201,7 +201,7 @@ func buildMessage(formSpec *Form, multipartForm *multipart.Form) *gm.Message {
 		}
 
 		msg.Attachments = append(msg.Attachments,
-			gm.Attachment{
+			gophermail.Attachment{
 				Name: meta.Filename,
 				Data: file,
 			})

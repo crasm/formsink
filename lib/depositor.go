@@ -2,20 +2,20 @@ package lib
 
 import (
 	"github.com/Sirupsen/logrus"
-	gm "github.com/jpoehls/gophermail"
-	md "github.com/luksen/maildir"
+	"github.com/jpoehls/gophermail"
+	"github.com/luksen/maildir"
 )
 
 type depositor interface {
-	Deposit(*gm.Message) error
+	Deposit(*gophermail.Message) error
 }
 
 type maildirDepositor struct {
-	dir md.Dir
+	dir maildir.Dir
 }
 
 func newMaildirDepositor(dirname string) *maildirDepositor {
-	dir := md.Dir(dirname)
+	dir := maildir.Dir(dirname)
 	err := dir.Create()
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
@@ -26,7 +26,7 @@ func newMaildirDepositor(dirname string) *maildirDepositor {
 	return &maildirDepositor{dir}
 }
 
-func (m *maildirDepositor) Deposit(msg *gm.Message) error {
+func (m *maildirDepositor) Deposit(msg *gophermail.Message) error {
 
 	delivery, err := m.dir.NewDelivery()
 	if err != nil {

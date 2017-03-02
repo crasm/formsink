@@ -9,7 +9,7 @@ import (
 	"os"
 	"testing"
 
-	gm "github.com/jpoehls/gophermail"
+	"github.com/jpoehls/gophermail"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,13 +25,13 @@ var simpleForm = &Form{
 // This is a function because the attachments are read by the tests. You
 // can only read in the contents of a file once before needing to rewind
 // or reset.
-func simpleMessage() *gm.Message {
+func simpleMessage() *gophermail.Message {
 	hostname, err := os.Hostname()
 	if err != nil {
 		panic("can't initialize: " + err.Error())
 	}
 
-	msg := &gm.Message{}
+	msg := &gophermail.Message{}
 	msg.From = mail.Address{
 		Name:    "FormSink",
 		Address: "FormSink@" + hostname,
@@ -48,22 +48,22 @@ func simpleMessage() *gm.Message {
 		panic("can't initialize: " + err.Error())
 	}
 
-	picture := gm.Attachment{
+	picture := gophermail.Attachment{
 		Name:        "tiny.ppm",
 		ContentType: "image/x-portable-pixmap",
 		Data:        tiny,
 	}
 
-	msg.Attachments = []gm.Attachment{picture}
+	msg.Attachments = []gophermail.Attachment{picture}
 	msg.Body = "name: crasm\nemail: crasm@formsink.email.vczf.io\nmessage: I &#9829; formsink!\n"
 	return msg
 }
 
 type mockDepositor struct {
-	msg *gm.Message
+	msg *gophermail.Message
 }
 
-func (m *mockDepositor) Deposit(msg *gm.Message) error {
+func (m *mockDepositor) Deposit(msg *gophermail.Message) error {
 	m.msg = msg
 	return nil
 }
@@ -83,7 +83,7 @@ func post(t *testing.T, sink http.Handler) *http.Response {
 }
 
 // Checks a message for equality with simpleMessage.
-func checkMessage(t *testing.T, msg *gm.Message) {
+func checkMessage(t *testing.T, msg *gophermail.Message) {
 	simpleMessage := simpleMessage()
 
 	require.NotNil(t, msg, "No mail message was provided")
