@@ -122,7 +122,8 @@ func TestHappy(t *testing.T) {
 }
 
 func TestNotFound(t *testing.T) {
-	sink, err := NewSink(DefaultMaildirPath, location, simpleForm)
+	mockDepositor := &mockDepositor{}
+	sink, err := newSink(mockDepositor, location, simpleForm)
 	assert.Nil(t, err)
 
 	r := httptest.NewRequest(http.MethodPost, "/hello", nil)
@@ -131,6 +132,7 @@ func TestNotFound(t *testing.T) {
 
 	result := w.Result()
 	assert.Equal(t, http.StatusNotFound, result.StatusCode)
+	assert.Nil(t, mockDepositor.msg)
 }
 
 func TestAddFormError(t *testing.T) {
@@ -140,13 +142,14 @@ func TestAddFormError(t *testing.T) {
 	}
 
 	for _, f := range forms {
-		_, err := NewSink(DefaultMaildirPath, location, f)
+		_, err := newSink(&mockDepositor{}, location, f) // We ignore the depositor msg
 		assert.NotNil(t, err)
 	}
 }
 
 func TestNotPost(t *testing.T) {
-	sink, err := NewSink(DefaultMaildirPath, location, simpleForm)
+	mockDepositor := &mockDepositor{}
+	sink, err := newSink(mockDepositor, location, simpleForm)
 	assert.Nil(t, err)
 
 	r := httptest.NewRequest(http.MethodGet, "/contact", nil)
@@ -155,6 +158,8 @@ func TestNotPost(t *testing.T) {
 
 	result := w.Result()
 	assert.Equal(t, http.StatusMethodNotAllowed, result.StatusCode)
+
+	assert.Nil(t, mockDepositor.msg)
 }
 
 func TestNoRedirect(t *testing.T) {
