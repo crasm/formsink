@@ -131,7 +131,9 @@ func (fs *formSink) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeStatus(w, http.StatusSeeOther)
 	}
 
-	logrus.Info("Finished processing form")
+	logrus.WithFields(logrus.Fields{
+		"form": form.Name,
+	}).Info("Finished processing form")
 }
 
 func buildMessage(formSpec *Form, multipartForm *multipart.Form) *gophermail.Message {
