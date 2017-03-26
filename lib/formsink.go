@@ -204,7 +204,7 @@ func buildMessage(formSpec *Form, multipartForm *multipart.Form) *gophermail.Mes
 
 		msg.Attachments = append(msg.Attachments,
 			gophermail.Attachment{
-				Name: meta.Filename,
+				Name: id + "_" + meta.Filename,
 				Data: file,
 			})
 	}
