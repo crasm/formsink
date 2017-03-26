@@ -24,6 +24,7 @@ func documentsToForms(documents ...*goquery.Document) ([]*Form, error) {
 			// e.g. action='https://www.example.com/contact'
 			action, ok := sel.Attr("action")
 			if !ok {
+				// TODO: provide more context in error message
 				err = e("No 'action' attribute available for %v", sel)
 				return false
 			}
