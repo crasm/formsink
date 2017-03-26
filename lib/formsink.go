@@ -156,20 +156,20 @@ func buildMessage(formSpec *Form, multipartForm *multipart.Form) *gophermail.Mes
 		body.WriteString(": ")
 
 		values, ok := multipartForm.Value[id]
-		if !ok || len(values) < 1 {
+		if ok && len(values) > 0 {
+			if len(values) > 1 {
+				logrus.WithFields(logrus.Fields{
+					"id": id,
+				}).Warn("Multiple values for a single field, ignoring all but the first")
+			}
+			body.WriteString(values[0])
+
+		} else {
 			logrus.WithFields(logrus.Fields{
 				"id": id,
 			}).Warn("No value for id")
-			continue
 		}
 
-		if len(values) > 1 {
-			logrus.WithFields(logrus.Fields{
-				"id": id,
-			}).Warn("Multiple values for a single field, ignoring all but the first")
-		}
-
-		body.WriteString(values[0])
 		body.WriteString("\n")
 	}
 
