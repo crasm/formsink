@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"path/filepath"
+	"strings"
 
 	"flag"
 	"net/http"
@@ -15,6 +16,10 @@ import (
 var listen = flag.String("listen", "localhost:1234", "Address and port to bind to.")
 var maildir = flag.String("maildir", lib.DefaultMaildirPath, "Path to the MAILDIR where incoming messages will be stored; will be created if it does not exist.")
 var redirect = flag.String("redirect", "", "URL to redirect the user to after submitting the form. Strongly recommended to be set to a confirmation page to avoid multiple submissions.")
+
+var insecure = flag.Bool("insecure", false, "Use HTTP (insecure) rather than HTTPS.")
+var tlsCert = flag.String("tls-cert", "", "Certificate file as documented in https://golang.org/pkg/net/http/#ListenAndServeTLS.")
+var tlsKey = flag.String("tls-key", "", "Private key file as document in https://golang.org/pkg/net/http/#ListenAndServeTLS.")
 
 func main() {
 	flag.Parse()
@@ -57,8 +62,34 @@ func main() {
 		logrus.Fatal(err)
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"address": *listen,
-	}).Info("Listening")
-	logrus.Fatal(http.ListenAndServe(*listen, sink))
+	if !*insecure {
+		okCert := *tlsCert != ""
+		okKey := *tlsKey != ""
+		if !(okCert && okKey) {
+			logrus.WithFields(logrus.Fields{
+				"okCert": okCert,
+				"okKey":  okKey,
+			}).Fatal("Missing configuration for TLS. Please provide a certificate and private key or disable TLS using the --insecure flag.")
+		}
+
+		if !strings.HasSuffix(*listen, ":443") {
+			logrus.Warn("Not listening on standard HTTPS port 443")
+		}
+
+		logrus.WithFields(logrus.Fields{
+			"address": *listen,
+		}).Info("Listening for HTTPS requests")
+		logrus.Fatal(http.ListenAndServeTLS(*listen, *tlsCert, *tlsKey, sink))
+
+	} else {
+		if !strings.HasSuffix(*listen, ":80") {
+			logrus.Warn("Not listening on standard HTTP port 80")
+		}
+
+		logrus.WithFields(logrus.Fields{
+			"address": *listen,
+		}).Info("Listening for HTTP requests")
+		logrus.Fatal(http.ListenAndServe(*listen, sink))
+	}
+
 }
