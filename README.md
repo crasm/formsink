@@ -26,8 +26,6 @@ contents are never sent over the wire in plaintext.
 
 ### Notes
 - Email is still stored unencrypted in the maildir.
-- Formsink does not currently support TLS unless you directly use the
-  `http.Handler` returned by the formsink internal library.
 
 How it works
 ------------
